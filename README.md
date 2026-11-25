@@ -3,7 +3,7 @@
 Interactive Decision Support System (DSS) for simulating customer retention and streaming upgrade strategies, checking break-even thresholds, and ranking strategies via Multi-Criteria Decision Analysis (MCDA).
 
 ## Live Demo
-- Open the deployed GitHub Pages link: `https:/RickC-302.github.io/megateco-dss/`
+- Open the deployed GitHub Pages link: `https://rickc-302.github.io/megatelco-dss/`
 
 ## Key Features
 - **Scenario Simulation:** Switch between *Worst Case*, *Base Case*, *Best Case*, and *Custom* scenarios or adjust model parameters in real time.
