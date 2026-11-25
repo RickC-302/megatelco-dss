@@ -1,0 +1,859 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MegaTelCo Decision Support System — Interactive Strategy &amp; MCDA Simulator</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172b4d;
+      --muted: #526179;
+      --blue: #1769aa;
+      --border: #d7e0eb;
+      --surface: #fff;
+      --page: #f3f6fa;
+      --revenue: #4c78a8;
+      --cost: #f58518;
+      --profit: #54a24b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    main { max-width: 1240px; margin: 0 auto; padding: 32px 22px 48px; }
+    h1 { margin: 0 0 8px; font-size: clamp(1.7rem, 4vw, 2.4rem); line-height: 1.2; }
+    h2 { margin: 0 0 16px; font-size: 1.3rem; }
+    h3 { margin: 0 0 12px; font-size: 1.05rem; }
+    p { margin: 8px 0; }
+    .intro, .panel, .results, .model-notes, .chart-panel, .mcda-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgb(23 43 77 / 5%);
+    }
+    .intro { padding: 24px; margin-bottom: 20px; }
+    .intro p, .subtle { color: var(--muted); }
+    .insight-banner { margin: 18px 0 4px; padding: 16px 18px; border-left: 5px solid var(--blue); border-radius: 8px; background: #eaf3fb; }
+    .insight-label { display: block; color: var(--blue); font-size: .82rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    #live-insight { margin: 4px 0 0; color: var(--ink); font-size: 1.05rem; font-weight: 650; }
+    .scenario-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+    label { font-weight: 600; }
+    select {
+      min-width: 210px;
+      border: 1px solid #9aabc0;
+      border-radius: 6px;
+      background: white;
+      color: var(--ink);
+      font: inherit;
+      padding: 9px 12px;
+    }
+    .campaigns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+    .panel { padding: 20px; }
+    .field { padding: 10px 0 12px; border-top: 1px solid #edf1f6; }
+    .field:first-of-type { border-top: 0; }
+    .field-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+    .field label { font-size: .94rem; }
+    output.value { color: var(--blue); font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+    input[type="range"] { width: 100%; margin: 11px 0 0; accent-color: var(--blue); }
+    .results { padding: 22px; margin-top: 20px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 670px; font-variant-numeric: tabular-nums; }
+    th, td { padding: 12px 10px; text-align: right; border-bottom: 1px solid var(--border); }
+    th { color: var(--muted); font-size: .88rem; }
+    th:first-child, td:first-child { text-align: left; }
+    td.profit { font-weight: 700; }
+    .break-even { margin: 14px 0 2px; padding: 12px 14px; background: #f4f8fc; border-radius: 8px; }
+    .status-grid, .chart-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .status-grid { margin: 16px 0 22px; }
+    .status-card { padding: 16px; border: 1px solid var(--border); border-radius: 9px; background: #fff; }
+    .status-card h3 { margin-bottom: 10px; }
+    .status-badge { display: inline-block; border-radius: 999px; padding: 6px 12px; color: #fff; font-weight: 800; font-size: .88rem; letter-spacing: .025em; }
+    .status-badge.met { background: #218739; }
+    .status-badge.below { background: #bd3039; }
+    .status-badge.unavailable { background: #64748b; }
+    .status-detail { margin: 10px 0 0; font-variant-numeric: tabular-nums; }
+    .chart-panel { min-width: 0; padding: 18px; }
+    .chart-panel h3 { margin-bottom: 4px; }
+    .chart-panel p { margin: 0 0 10px; color: var(--muted); font-size: .9rem; }
+    .chart-container { position: relative; width: 100%; height: 300px; }
+    .chart-grid.break-even-charts { margin-top: 16px; }
+    .mcda-panel { margin-top: 20px; padding: 22px; }
+    .weight-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .weight-control { min-width: 0; padding: 14px; border: 1px solid var(--border); border-radius: 9px; background: #fff; }
+    .weight-control label { display: block; min-height: 2.8em; }
+    .weight-inputs { display: grid; grid-template-columns: minmax(0, 1fr) 82px; gap: 12px; align-items: center; margin-top: 8px; }
+    .weight-inputs input[type="range"] { margin: 0; }
+    .weight-number { width: 100%; padding: 7px; border: 1px solid #9aabc0; border-radius: 5px; font: inherit; text-align: right; }
+    .normalized-weight { display: inline-block; margin-top: 8px; padding: 3px 9px; border-radius: 999px; background: #eaf3fb; color: var(--blue); font-size: .9rem; font-weight: 750; font-variant-numeric: tabular-nums; }
+    .weight-notice, .mcda-method-note { color: var(--muted); font-size: .9rem; }
+    .mcda-table { min-width: 900px; }
+    .mcda-table td:nth-child(2) { min-width: 250px; }
+    .mcda-table td:last-child { font-weight: 800; }
+    .mcda-chart-container { position: relative; height: 360px; margin-top: 12px; }
+    #chart { display: block; width: 100%; height: auto; margin-top: 12px; overflow: visible; }
+    .chart-legend { display: flex; flex-wrap: wrap; gap: 16px; color: var(--muted); font-size: .9rem; }
+    .legend-item { display: inline-flex; align-items: center; gap: 7px; }
+    .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; }
+    .model-notes { margin-top: 20px; padding: 20px 24px; }
+    .model-notes ul { margin: 8px 0 0; padding-left: 22px; color: var(--muted); }
+    code { color: #23395d; background: #f0f3f7; border-radius: 3px; padding: 1px 4px; }
+    @media (max-width: 800px) {
+      main { padding: 18px 12px 30px; }
+      .campaigns { grid-template-columns: 1fr; }
+      .status-grid, .chart-grid { grid-template-columns: 1fr; }
+      .weight-grid { grid-template-columns: 1fr; }
+      .intro, .panel, .results, .model-notes { padding: 17px; }
+      .mcda-panel { padding: 17px; }
+      .chart-container { height: 280px; }
+      .mcda-chart-container { height: 320px; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="intro">
+      <h1>MegaTelCo Decision Support System</h1>
+      <p><strong>Interactive Strategy &amp; MCDA Simulator</strong></p>
+      <p>Compare the expected economics of the Customer Retention and Streaming Upgrade campaigns. Select a preset scenario, then adjust the controls to explore assumptions. Editing a control switches the selector to Custom.</p>
+      <div class="insight-banner" role="status" aria-live="polite">
+        <span class="insight-label">Live Decision Insight</span>
+        <p id="live-insight">Calculating current break-even status and strategy ranking…</p>
+      </div>
+      <div class="scenario-row">
+        <label for="scenario">Scenario</label>
+        <select id="scenario">
+          <option>Worst Case</option>
+          <option selected>Base Case</option>
+          <option>Best Case</option>
+          <option>Custom</option>
+        </select>
+        <span class="subtle">Preset assumptions can be changed at any time.</span>
+      </div>
+    </header>
+
+    <section class="campaigns" aria-label="Campaign assumptions">
+      <article class="panel">
+        <h2>Customer Retention Campaign</h2>
+        <div class="field" data-model="retention" data-key="n_target" data-label="Target customers (N_target)" data-format="integer" data-min="0" data-max="10000" data-step="100"></div>
+        <div class="field" data-model="retention" data-key="r_acc" data-label="Acceptance rate (r_acc)" data-format="percent" data-min="0" data-max="1" data-step="0.01"></div>
+        <div class="field" data-model="retention" data-key="r_ret" data-label="Incremental retention probability (r_ret)" data-format="percent" data-min="0" data-max="1" data-step="0.01"></div>
+        <div class="field" data-model="retention" data-key="horizon" data-label="Evaluation horizon T (months)" data-format="integer" data-min="1" data-max="60" data-step="1"></div>
+        <div class="field" data-model="retention" data-key="monthly_margin" data-label="Monthly margin M ($/month)" data-format="currency" data-min="0" data-max="100" data-step="0.5"></div>
+        <div class="field" data-model="retention" data-key="campaign_cost" data-label="Campaign cost C_camp ($/accepted customer)" data-format="currency" data-min="0" data-max="500" data-step="1"></div>
+      </article>
+
+      <article class="panel">
+        <h2>Streaming Upgrade Campaign</h2>
+        <div class="field" data-model="streaming" data-key="n_eligible" data-label="Eligible customers (N_eligible)" data-format="integer" data-min="0" data-max="10000" data-step="10"></div>
+        <div class="field" data-model="streaming" data-key="r_up" data-label="Upgrade rate (r_up)" data-format="percent" data-min="0" data-max="1" data-step="0.01"></div>
+        <div class="field" data-model="streaming" data-key="delta_revenue" data-label="Additional monthly revenue Delta_R ($)" data-format="currency" data-min="0" data-max="100" data-step="0.5"></div>
+        <div class="field" data-model="streaming" data-key="delta_service_cost" data-label="Additional monthly service cost Delta_S ($)" data-format="currency" data-min="0" data-max="100" data-step="0.5"></div>
+        <div class="field" data-model="streaming" data-key="promo_cost" data-label="One-time promotion C_promo ($/upgrade)" data-format="currency" data-min="0" data-max="500" data-step="1"></div>
+        <div class="field" data-model="streaming" data-key="horizon" data-label="Evaluation horizon T_eval (months)" data-format="integer" data-min="1" data-max="60" data-step="1"></div>
+      </article>
+    </section>
+
+    <section class="results" aria-live="polite">
+      <h2 id="results-title">Results — Base Case</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Campaign</th>
+              <th>Incremental revenue</th>
+              <th>Total cost</th>
+              <th>Simulated profit</th>
+              <th>ROI</th>
+            </tr>
+          </thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+      <p class="break-even" id="break-even"></p>
+      <div class="status-grid" aria-live="polite">
+        <article class="status-card">
+          <h3>Retention Model — Break-Even Status</h3>
+          <span id="retention-status-badge" class="status-badge unavailable">CALCULATING</span>
+          <p id="retention-status-detail" class="status-detail"></p>
+        </article>
+        <article class="status-card">
+          <h3>Streaming Upgrade — Break-Even Status</h3>
+          <span id="streaming-status-badge" class="status-badge unavailable">CALCULATING</span>
+          <p id="streaming-status-detail" class="status-detail"></p>
+        </article>
+      </div>
+      <h3>Campaign economics under current assumptions</h3>
+      <div class="chart-legend" aria-label="Chart legend">
+        <span class="legend-item"><i class="swatch" style="background:var(--revenue)"></i>Incremental revenue</span>
+        <span class="legend-item"><i class="swatch" style="background:var(--cost)"></i>Total cost</span>
+        <span class="legend-item"><i class="swatch" style="background:var(--profit)"></i>Simulated profit</span>
+      </div>
+      <svg id="chart" viewBox="0 0 900 390" role="img" aria-label="Bar chart comparing campaign revenue, cost, and profit"></svg>
+
+      <h3 style="margin-top:28px">Scenario Profit Comparison</h3>
+      <p class="subtle">Preset scenario profit estimates use the same campaign formulas as the live results above.</p>
+      <div class="chart-panel">
+        <div class="chart-container">
+          <canvas id="scenario-profit-chart" role="img" aria-label="Grouped bar chart comparing retention, streaming, and combined profit across the three preset scenarios"></canvas>
+        </div>
+      </div>
+
+      <h3 style="margin-top:28px">Actual Input vs. Break-Even Threshold</h3>
+      <p class="subtle">Each model has its own scale and units so the active input can be compared directly with its threshold.</p>
+      <div class="chart-grid break-even-charts">
+        <article class="chart-panel">
+          <h3>Retention Probability</h3>
+          <p>Active incremental retention probability vs. required minimum</p>
+          <div class="chart-container">
+            <canvas id="retention-break-even-chart" role="img" aria-label="Retention probability compared with its break-even threshold"></canvas>
+          </div>
+        </article>
+        <article class="chart-panel">
+          <h3>Streaming Monthly Revenue</h3>
+          <p>Active additional monthly revenue vs. required minimum</p>
+          <div class="chart-container">
+            <canvas id="streaming-break-even-chart" role="img" aria-label="Streaming additional monthly revenue compared with its break-even threshold"></canvas>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="mcda-panel" aria-labelledby="mcda-title">
+      <h2 id="mcda-title">MCDA Strategy Ranking</h2>
+      <p class="subtle">Set preference weights for each decision criterion. Raw inputs are automatically normalized to percentages that sum to 100%; scores and rankings update with the active campaign assumptions.</p>
+      <div class="weight-grid" aria-label="MCDA criterion weights">
+        <article class="weight-control" data-weight-control="financial">
+          <label for="weight-financial">Financial Return (Incremental Profit)</label>
+          <div class="weight-inputs">
+            <input id="weight-financial" type="range" min="0" max="100" step="1" value="40" aria-label="Financial return preference weight">
+            <input id="weight-financial-number" class="weight-number" type="number" min="0" max="100" step="1" value="40" aria-label="Financial return preference weight numeric input">
+          </div>
+          <span id="normalized-financial" class="normalized-weight">40.0% normalized</span>
+        </article>
+        <article class="weight-control" data-weight-control="churn">
+          <label for="weight-churn">Churn Risk Mitigation (High-Risk Segments)</label>
+          <div class="weight-inputs">
+            <input id="weight-churn" type="range" min="0" max="100" step="1" value="30" aria-label="Churn risk mitigation preference weight">
+            <input id="weight-churn-number" class="weight-number" type="number" min="0" max="100" step="1" value="30" aria-label="Churn risk mitigation preference weight numeric input">
+          </div>
+          <span id="normalized-churn" class="normalized-weight">30.0% normalized</span>
+        </article>
+        <article class="weight-control" data-weight-control="safety">
+          <label for="weight-safety">Break-Even Safety Margin / Risk Resilience</label>
+          <div class="weight-inputs">
+            <input id="weight-safety" type="range" min="0" max="100" step="1" value="20" aria-label="Break-even safety preference weight">
+            <input id="weight-safety-number" class="weight-number" type="number" min="0" max="100" step="1" value="20" aria-label="Break-even safety preference weight numeric input">
+          </div>
+          <span id="normalized-safety" class="normalized-weight">20.0% normalized</span>
+        </article>
+        <article class="weight-control" data-weight-control="feasibility">
+          <label for="weight-feasibility">Implementation Feasibility &amp; Cost Efficiency</label>
+          <div class="weight-inputs">
+            <input id="weight-feasibility" type="range" min="0" max="100" step="1" value="10" aria-label="Implementation feasibility and cost efficiency preference weight">
+            <input id="weight-feasibility-number" class="weight-number" type="number" min="0" max="100" step="1" value="10" aria-label="Implementation feasibility and cost efficiency preference weight numeric input">
+          </div>
+          <span id="normalized-feasibility" class="normalized-weight">10.0% normalized</span>
+        </article>
+      </div>
+      <p id="weight-notice" class="weight-notice">Normalized criterion weights currently sum to 100.0%.</p>
+
+      <h3>Ranked Strategy Summary</h3>
+      <div class="table-wrap">
+        <table class="mcda-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Strategy</th>
+              <th>Financial<br>score</th>
+              <th>Churn risk<br>score</th>
+              <th>Break-even safety<br>score</th>
+              <th>Feasibility / cost<br>score</th>
+              <th>Weighted<br>score / 100</th>
+            </tr>
+          </thead>
+          <tbody id="mcda-results-body"></tbody>
+        </table>
+      </div>
+
+      <h3 style="margin-top:24px">Weighted Score Breakdown</h3>
+      <p class="subtle">Each stacked segment shows a criterion’s weighted contribution to the strategy’s total score (0–100).</p>
+      <div class="chart-panel">
+        <div class="mcda-chart-container">
+          <canvas id="mcda-chart" role="img" aria-label="Horizontal stacked bar chart showing weighted MCDA score contributions by strategy"></canvas>
+        </div>
+      </div>
+      <p class="mcda-method-note">
+        Scoring notes: a modeled campaign’s financial score is its positive active profit divided by the strongest positive active profit (capped at 100); negative profit scores 0. Strategy 3 receives a neutral 50 because its profit is not quantified in the report. Churn scores use observed segment churn rates (0–6m tenure 52.94%, month-to-month 42.71%, electronic check 45.29%) relative to 52.94%; Strategy 1 uses the equal-weight mean of its two targeted segments, Strategy 2 has no direct churn-mitigation target in the report, and Strategy 3 uses the electronic-check rate. These are exposure proxies, not estimated causal churn reductions. Safety score = 100 × actual input / (actual input + break-even threshold); Strategy 3 is neutral 50 because no break-even model is available. Feasibility anchors (90, 75, 55) reflect the report’s short-, short-to-medium-, and long-term implementation sequence; this component averages the anchor with a lower-cost-is-better min-max comparison of modeled total campaign costs. Strategy 3’s unmodeled cost component is neutral 50. Treat these transparent scoring assumptions as decision aids, not measured outcomes.
+      </p>
+    </section>
+
+    <section class="model-notes">
+      <h2>Model definitions and assumptions</h2>
+      <ul>
+        <li><strong>Retention:</strong> accepted customers = <code>N_target × r_acc</code>; retained customers = accepted customers <code>× r_ret</code>; incremental revenue = retained customers <code>× M × T</code>; campaign cost = accepted customers <code>× C_camp</code>; profit = revenue minus campaign cost.</li>
+        <li><strong>Streaming:</strong> upgraded customers = <code>N_eligible × r_up</code>; incremental revenue = upgraded customers <code>× Delta_R × T_eval</code>; total cost = upgraded customers <code>× (Delta_S × T_eval + C_promo)</code>; profit = revenue minus total cost.</li>
+        <li><strong>ROI</strong> is incremental profit divided by total campaign cost. If cost is zero, ROI is N/A. Results are deterministic expected-value estimates, so fractional customer counts are not rounded in the calculations.</li>
+        <li>Retention break-even incremental retention probability = <code>C_camp / (M × T)</code>. Streaming break-even additional monthly revenue = <code>Delta_S + C_promo / T_eval</code>.</li>
+        <li>All monetary values are in US dollars. Retention costs are per accepted customer. Streaming costs include additional service costs over the evaluation horizon and the one-time promotion. This version does not model uncertainty, discounting, customer-level records, or cash-flow timing.</li>
+      </ul>
+    </section>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+  <script>
+    "use strict";
+
+    const presets = {
+      "Worst Case": {
+        retention: { n_target: 1000, r_acc: 0.25, r_ret: 0.25, horizon: 12, monthly_margin: 10, campaign_cost: 20 },
+        streaming: { n_eligible: 1920, r_up: 0.20, delta_revenue: 4, delta_service_cost: 2.5, promo_cost: 25, horizon: 24 }
+      },
+      "Base Case": {
+        retention: { n_target: 1000, r_acc: 0.30, r_ret: 0.40, horizon: 12, monthly_margin: 10, campaign_cost: 20 },
+        streaming: { n_eligible: 1920, r_up: 0.30, delta_revenue: 5, delta_service_cost: 2, promo_cost: 20, horizon: 24 }
+      },
+      "Best Case": {
+        retention: { n_target: 1000, r_acc: 0.35, r_ret: 0.55, horizon: 12, monthly_margin: 11, campaign_cost: 18 },
+        streaming: { n_eligible: 1920, r_up: 0.40, delta_revenue: 6, delta_service_cost: 1.5, promo_cost: 15, horizon: 24 }
+      }
+    };
+
+    const scenarioSelect = document.getElementById("scenario");
+    const fields = [...document.querySelectorAll(".field")];
+    const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 });
+    const number = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+    let loadingPreset = false;
+    let scenarioProfitChart;
+    let retentionBreakEvenChart;
+    let streamingBreakEvenChart;
+    let mcdaChart;
+    const weightKeys = ["financial", "churn", "safety", "feasibility"];
+
+    function formatControl(value, format) {
+      if (format === "percent") return `${(value * 100).toFixed(0)}%`;
+      if (format === "currency") return money.format(value);
+      return number.format(value);
+    }
+
+    function setupFields() {
+      for (const field of fields) {
+        const { model, key, label, format, min, max, step } = field.dataset;
+        const initial = presets["Base Case"][model][key];
+        const id = `${model}-${key}`;
+        field.innerHTML = `
+          <div class="field-head">
+            <label for="${id}">${label}</label>
+            <output class="value" id="${id}-value" for="${id}"></output>
+          </div>
+          <input type="range" id="${id}" min="${min}" max="${max}" step="${step}" value="${initial}">
+        `;
+        const input = field.querySelector("input");
+        const output = field.querySelector("output");
+        const updateValue = () => {
+          output.value = formatControl(Number(input.value), format);
+          output.textContent = output.value;
+        };
+        const handleInput = () => {
+          updateValue();
+          if (!loadingPreset) scenarioSelect.value = "Custom";
+          render();
+        };
+        input.addEventListener("input", handleInput);
+        input.addEventListener("change", handleInput);
+        updateValue();
+      }
+    }
+
+    function getValues(model) {
+      const values = {};
+      for (const field of fields) {
+        if (field.dataset.model === model) {
+          values[field.dataset.key] = Number(field.querySelector("input").value);
+        }
+      }
+      return values;
+    }
+
+    function loadPreset(name) {
+      if (name === "Custom") {
+        render();
+        return;
+      }
+      if (!presets[name]) return;
+      loadingPreset = true;
+      scenarioSelect.value = name;
+      for (const field of fields) {
+        const input = field.querySelector("input");
+        input.value = presets[name][field.dataset.model][field.dataset.key];
+        const output = field.querySelector("output");
+        output.value = formatControl(Number(input.value), field.dataset.format);
+        output.textContent = output.value;
+      }
+      loadingPreset = false;
+      render();
+    }
+
+    function calculate() {
+      const r = getValues("retention");
+      const s = getValues("streaming");
+      const accepted = r.n_target * r.r_acc;
+      const retentionRevenue = accepted * r.r_ret * r.monthly_margin * r.horizon;
+      const retentionCost = accepted * r.campaign_cost;
+      const upgraded = s.n_eligible * s.r_up;
+      const streamingRevenue = upgraded * s.delta_revenue * s.horizon;
+      const streamingCost = upgraded * (s.delta_service_cost * s.horizon + s.promo_cost);
+      return {
+        retention: { name: "Customer Retention", revenue: retentionRevenue, cost: retentionCost, profit: retentionRevenue - retentionCost },
+        streaming: { name: "Streaming Upgrade", revenue: streamingRevenue, cost: streamingCost, profit: streamingRevenue - streamingCost },
+        retentionBreakEven: r.monthly_margin * r.horizon ? r.campaign_cost / (r.monthly_margin * r.horizon) : null,
+        streamingBreakEven: s.horizon ? s.delta_service_cost + s.promo_cost / s.horizon : null
+      };
+    }
+
+    function profitForScenario(scenario, model) {
+      if (model === "retention") {
+        const values = scenario.retention;
+        const accepted = values.n_target * values.r_acc;
+        return accepted * values.r_ret * values.monthly_margin * values.horizon -
+          accepted * values.campaign_cost;
+      }
+      const values = scenario.streaming;
+      const upgraded = values.n_eligible * values.r_up;
+      return upgraded * values.delta_revenue * values.horizon -
+        upgraded * (values.delta_service_cost * values.horizon + values.promo_cost);
+    }
+
+    function createBreakEvenChart(canvasId, labels, unitFormatter, axisFormatter) {
+      return new Chart(document.getElementById(canvasId), {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [
+            { label: "Actual input", data: [0], backgroundColor: "#1769aa", borderRadius: 4 },
+            { label: "Break-even threshold", data: [0], backgroundColor: "#f2a541", borderRadius: 4 }
+          ]
+        },
+        options: {
+          indexAxis: "y",
+          maintainAspectRatio: false,
+          responsive: true,
+          plugins: {
+            legend: { position: "bottom" },
+            tooltip: {
+              callbacks: {
+                label: context => `${context.dataset.label}: ${unitFormatter(context.parsed.x)}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              beginAtZero: true,
+              title: { display: true, text: labels[0].includes("probability") ? "Probability" : "USD per month" },
+              ticks: { callback: axisFormatter }
+            },
+            y: { grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    function initializeCharts() {
+      if (typeof Chart === "undefined") {
+        for (const container of document.querySelectorAll(".chart-container")) {
+          container.innerHTML = '<p role="alert">Chart.js could not be loaded. Connect to the internet and reload to view interactive charts.</p>';
+        }
+        return;
+      }
+
+      Chart.defaults.color = "#526179";
+      Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", sans-serif';
+      const scenarioNames = ["Worst Case", "Base Case", "Best Case"];
+      const retentionProfits = scenarioNames.map(name => profitForScenario(presets[name], "retention"));
+      const streamingProfits = scenarioNames.map(name => profitForScenario(presets[name], "streaming"));
+      scenarioProfitChart = new Chart(document.getElementById("scenario-profit-chart"), {
+        type: "bar",
+        data: {
+          labels: scenarioNames,
+          datasets: [
+            { label: "Retention Profit", data: retentionProfits, backgroundColor: "#4c78a8", borderRadius: 4 },
+            { label: "Streaming Upgrade Profit", data: streamingProfits, backgroundColor: "#f58518", borderRadius: 4 },
+            { label: "Combined Profit", data: retentionProfits.map((value, index) => value + streamingProfits[index]), backgroundColor: "#54a24b", borderRadius: 4 }
+          ]
+        },
+        options: {
+          maintainAspectRatio: false,
+          responsive: true,
+          plugins: {
+            legend: { position: "bottom" },
+            tooltip: { callbacks: { label: context => `${context.dataset.label}: ${money.format(context.parsed.y)}` } }
+          },
+          scales: {
+            x: { grid: { display: false } },
+            y: {
+              beginAtZero: true,
+              title: { display: true, text: "Incremental profit (USD)" },
+              ticks: { callback: value => money.format(value) }
+            }
+          }
+        }
+      });
+      retentionBreakEvenChart = createBreakEvenChart(
+        "retention-break-even-chart",
+        ["Retention probability"],
+        value => `${(value * 100).toFixed(2)}%`,
+        value => `${(value * 100).toFixed(0)}%`
+      );
+      retentionBreakEvenChart.options.scales.x.title.text = "Retention probability";
+      streamingBreakEvenChart = createBreakEvenChart(
+        "streaming-break-even-chart",
+        ["Additional monthly revenue"],
+        value => money.format(value) + "/month",
+        value => money.format(value)
+      );
+      mcdaChart = new Chart(document.getElementById("mcda-chart"), {
+        type: "bar",
+        data: {
+          labels: [],
+          datasets: [
+            { label: "Financial Return", data: [], backgroundColor: "#4c78a8" },
+            { label: "Churn Risk Mitigation", data: [], backgroundColor: "#54a24b" },
+            { label: "Break-Even Safety", data: [], backgroundColor: "#b279a2" },
+            { label: "Feasibility / Cost Efficiency", data: [], backgroundColor: "#eeca3b" }
+          ]
+        },
+        options: {
+          indexAxis: "y",
+          maintainAspectRatio: false,
+          responsive: true,
+          datasets: { bar: { borderRadius: 3 } },
+          plugins: {
+            legend: { position: "bottom" },
+            tooltip: {
+              callbacks: {
+                label: context => `${context.dataset.label}: ${context.parsed.x.toFixed(1)} weighted points`
+              }
+            }
+          },
+          scales: {
+            x: {
+              stacked: true,
+              min: 0,
+              max: 100,
+              title: { display: true, text: "Weighted score (0–100)" },
+              ticks: { callback: value => `${value}` }
+            },
+            y: { stacked: true, grid: { display: false } }
+          }
+        }
+      });
+    }
+
+    function setupWeightControls() {
+      for (const key of weightKeys) {
+        const slider = document.getElementById(`weight-${key}`);
+        const numeric = document.getElementById(`weight-${key}-number`);
+        const updatePair = event => {
+          if (event.target === numeric && event.target.value === "") return;
+          const parsed = Number(event.target.value);
+          const value = Number.isFinite(parsed) ? Math.min(100, Math.max(0, parsed)) : 0;
+          slider.value = value;
+          numeric.value = value;
+          render();
+        };
+        slider.addEventListener("input", updatePair);
+        numeric.addEventListener("input", updatePair);
+        numeric.addEventListener("change", updatePair);
+      }
+    }
+
+    function normalizedWeights() {
+      const raw = Object.fromEntries(weightKeys.map(key => [
+        key,
+        Math.max(0, Number(document.getElementById(`weight-${key}-number`).value) || 0)
+      ]));
+      const total = Object.values(raw).reduce((sum, value) => sum + value, 0);
+      if (total === 0) {
+        return { values: Object.fromEntries(weightKeys.map(key => [key, 25])), allZero: true };
+      }
+      return {
+        values: Object.fromEntries(weightKeys.map(key => [key, raw[key] / total * 100])),
+        allZero: false
+      };
+    }
+
+    function safetyScore(actual, threshold) {
+      if (threshold === null) return 50;
+      if (actual === 0 && threshold === 0) return 50;
+      return actual / (actual + threshold) * 100;
+    }
+
+    function rankStrategies(results) {
+      const retention = getValues("retention");
+      const streaming = getValues("streaming");
+      const weightState = normalizedWeights();
+      const weights = weightState.values;
+      const financialScale = Math.max(0, results.retention.profit, results.streaming.profit);
+      const financialScore = profit => financialScale > 0
+        ? Math.min(100, Math.max(0, profit / financialScale * 100))
+        : 0;
+      const costMin = Math.min(results.retention.cost, results.streaming.cost);
+      const costMax = Math.max(results.retention.cost, results.streaming.cost);
+      const costEfficiency = costMax === costMin
+        ? { retention: 50, streaming: 50 }
+        : {
+            retention: (costMax - results.retention.cost) / (costMax - costMin) * 100,
+            streaming: (costMax - results.streaming.cost) / (costMax - costMin) * 100
+          };
+      const riskScores = {
+        retention: ((52.94 + 42.71) / 2) / 52.94 * 100,
+        streaming: 0,
+        experience: 45.29 / 52.94 * 100
+      };
+      const criteriaFor = (financial, churn, safety, feasibility, costScore) => ({
+        financial,
+        churn,
+        safety,
+        feasibility: (feasibility + costScore) / 2
+      });
+      const strategies = [
+        {
+          id: "retention",
+          name: "Strategy 1: Targeted Retention Campaign",
+          criteria: criteriaFor(
+            financialScore(results.retention.profit),
+            riskScores.retention,
+            safetyScore(retention.r_ret, results.retentionBreakEven),
+            90,
+            costEfficiency.retention
+          )
+        },
+        {
+          id: "streaming",
+          name: "Strategy 2: Streaming Upgrade Campaign",
+          criteria: criteriaFor(
+            financialScore(results.streaming.profit),
+            riskScores.streaming,
+            safetyScore(streaming.delta_revenue, results.streamingBreakEven),
+            75,
+            costEfficiency.streaming
+          )
+        },
+        {
+          id: "experience",
+          name: "Strategy 3: Payment & Service Experience Improvement",
+          criteria: criteriaFor(50, riskScores.experience, 50, 55, 50)
+        }
+      ];
+
+      for (const strategy of strategies) {
+        strategy.contributions = Object.fromEntries(weightKeys.map(key => [
+          key, strategy.criteria[key] * weights[key] / 100
+        ]));
+        strategy.total = weightKeys.reduce((sum, key) => sum + strategy.contributions[key], 0);
+      }
+      strategies.sort((a, b) => b.total - a.total);
+      let rank = 0;
+      let previousScore = null;
+      strategies.forEach((strategy, index) => {
+        if (previousScore === null || Math.abs(strategy.total - previousScore) > 1e-9) {
+          rank = index + 1;
+          previousScore = strategy.total;
+        }
+        strategy.rank = rank;
+      });
+      return { strategies, weights, allZero: weightState.allZero };
+    }
+
+    function renderMcda(results) {
+      const ranking = rankStrategies(results);
+      const tenths = weightKeys.map(key => ranking.weights[key] * 10);
+      const roundedTenths = tenths.map(Math.floor);
+      let tenthsRemaining = 1000 - roundedTenths.reduce((sum, value) => sum + value, 0);
+      const remainderOrder = tenths
+        .map((value, index) => ({ index, fraction: value - roundedTenths[index] }))
+        .sort((a, b) => b.fraction - a.fraction);
+      for (let i = 0; i < tenthsRemaining; i++) roundedTenths[remainderOrder[i].index] += 1;
+      const displayedWeights = Object.fromEntries(
+        weightKeys.map((key, index) => [key, roundedTenths[index] / 10])
+      );
+      for (const key of weightKeys) {
+        document.getElementById(`normalized-${key}`).textContent =
+          `${displayedWeights[key].toFixed(1)}% normalized`;
+      }
+      const weightTotal = Object.values(ranking.weights).reduce((sum, value) => sum + value, 0);
+      document.getElementById("weight-notice").textContent = ranking.allZero
+        ? "All raw weights are zero; equal 25.0% normalized weights are applied until a positive preference is entered."
+        : `Normalized criterion weights currently sum to ${weightTotal.toFixed(1)}%.`;
+
+      const criterionOrder = ["financial", "churn", "safety", "feasibility"];
+      document.getElementById("mcda-results-body").innerHTML = ranking.strategies.map(strategy => `
+        <tr>
+          <td>${strategy.rank}</td>
+          <td>${strategy.name}</td>
+          <td>${strategy.criteria.financial.toFixed(1)}</td>
+          <td>${strategy.criteria.churn.toFixed(1)}</td>
+          <td>${strategy.criteria.safety.toFixed(1)}</td>
+          <td>${strategy.criteria.feasibility.toFixed(1)}</td>
+          <td>${strategy.total.toFixed(1)}</td>
+        </tr>
+      `).join("");
+
+      const firstPlace = ranking.strategies.filter(strategy => strategy.rank === 1);
+      const leader = firstPlace.length > 1
+        ? `${firstPlace.map(strategy => strategy.name.replace(/^Strategy \d+: /, "")).join(" and ")} tie for #1`
+        : `${firstPlace[0].name.replace(/^Strategy \d+: /, "")} ranks #1`;
+      const retention = getValues("retention");
+      const streaming = getValues("streaming");
+      const retentionMet = results.retentionBreakEven !== null && retention.r_ret >= results.retentionBreakEven;
+      const streamingMet = results.streamingBreakEven !== null && streaming.delta_revenue >= results.streamingBreakEven;
+      const statusText = (met, threshold, unavailable) => threshold === null
+        ? unavailable
+        : met ? "clears break-even" : "is below break-even";
+      const breakEvenSummary = `Retention ${statusText(
+        retentionMet, results.retentionBreakEven, "threshold unavailable"
+      )} (${(retention.r_ret * 100).toFixed(2)}% vs. ${
+        results.retentionBreakEven === null ? "N/A" : `${(results.retentionBreakEven * 100).toFixed(2)}%`
+      }); Streaming ${statusText(
+        streamingMet, results.streamingBreakEven, "threshold unavailable"
+      )} (${money.format(streaming.delta_revenue)}/month vs. ${
+        results.streamingBreakEven === null ? "N/A" : `${money.format(results.streamingBreakEven)}/month`
+      }).`;
+      document.getElementById("live-insight").textContent =
+        `${scenarioSelect.value}: ${breakEvenSummary} ${leader} under the current MCDA weights ` +
+        `(${firstPlace[0].total.toFixed(1)}/100).`;
+
+      if (mcdaChart) {
+        mcdaChart.data.labels = ranking.strategies.map(strategy => strategy.name.replace(/^Strategy \d+: /, ""));
+        mcdaChart.data.datasets.forEach((dataset, index) => {
+          dataset.data = ranking.strategies.map(strategy => strategy.contributions[criterionOrder[index]]);
+        });
+        mcdaChart.update("none");
+      }
+    }
+
+    function updateStatusBadge(prefix, actual, threshold, difference, formatValue, formatDifference, unavailableMessage) {
+      const badge = document.getElementById(`${prefix}-status-badge`);
+      const detail = document.getElementById(`${prefix}-status-detail`);
+      if (threshold === null) {
+        badge.className = "status-badge unavailable";
+        badge.textContent = "THRESHOLD UNAVAILABLE";
+        detail.textContent = unavailableMessage;
+        return;
+      }
+
+      const met = difference >= 0;
+      badge.className = `status-badge ${met ? "met" : "below"}`;
+      badge.textContent = met ? "BREAK-EVEN MET" : "BELOW BREAK-EVEN";
+      const differenceText = met
+        ? formatDifference(difference)
+        : formatDifference(Math.abs(difference)).replace(/^\+/, "");
+      detail.textContent = `Actual: ${formatValue(actual)} · Break-even: ${formatValue(threshold)} · ` +
+        `${met ? "Safety margin" : "Deficit"}: ${differenceText}.`;
+    }
+
+    function updateCharts(results) {
+      if (!scenarioProfitChart) return;
+      const retention = getValues("retention");
+      const streaming = getValues("streaming");
+
+      retentionBreakEvenChart.data.datasets[0].data = [retention.r_ret];
+      retentionBreakEvenChart.data.datasets[1].data = [results.retentionBreakEven];
+      retentionBreakEvenChart.update("none");
+
+      streamingBreakEvenChart.data.datasets[0].data = [streaming.delta_revenue];
+      streamingBreakEvenChart.data.datasets[1].data = [results.streamingBreakEven];
+      streamingBreakEvenChart.update("none");
+    }
+
+    function renderChart(results) {
+      const svg = document.getElementById("chart");
+      const series = [
+        { key: "revenue", color: "#4c78a8" },
+        { key: "cost", color: "#f58518" },
+        { key: "profit", color: "#54a24b" }
+      ];
+      const values = Object.values(results).filter(item => item && typeof item === "object" && "revenue" in item);
+      const maxAbs = Math.max(1, ...values.flatMap(item => [Math.abs(item.revenue), Math.abs(item.cost), Math.abs(item.profit)]));
+      const zeroY = 250;
+      const scale = 185 / maxAbs;
+      const groupCenters = [270, 650];
+      const barWidth = 56;
+      const gap = 14;
+      let markup = `<line x1="75" y1="${zeroY}" x2="855" y2="${zeroY}" stroke="#8190a5" stroke-width="1.5"></line>`;
+      for (let groupIndex = 0; groupIndex < values.length; groupIndex++) {
+        const item = values[groupIndex];
+        const startX = groupCenters[groupIndex] - ((barWidth * 3 + gap * 2) / 2);
+        for (let i = 0; i < series.length; i++) {
+          const value = item[series[i].key];
+          const height = Math.abs(value) * scale;
+          const x = startX + i * (barWidth + gap);
+          const y = value >= 0 ? zeroY - height : zeroY;
+          const labelY = value >= 0 ? Math.max(22, y - 7) : Math.min(365, y + height + 16);
+          markup += `<rect x="${x}" y="${y}" width="${barWidth}" height="${Math.max(1, height)}" rx="3" fill="${series[i].color}"><title>${item.name}: ${series[i].key} ${money.format(value)}</title></rect>`;
+          markup += `<text x="${x + barWidth / 2}" y="${labelY}" text-anchor="middle" font-size="12" fill="#33445e">${money.format(value)}</text>`;
+        }
+        markup += `<text x="${groupCenters[groupIndex]}" y="383" text-anchor="middle" font-size="14" font-weight="600" fill="#172b4d">${item.name}</text>`;
+      }
+      markup += `<text x="20" y="34" font-size="12" fill="#526179">Dollars ($)</text>`;
+      svg.innerHTML = markup;
+    }
+
+    function render() {
+      const result = calculate();
+      const rows = [result.retention, result.streaming];
+      document.getElementById("results-title").textContent = `Results — ${scenarioSelect.value}`;
+      document.getElementById("results-body").innerHTML = rows.map(item => {
+        const roi = item.cost ? `${(item.profit / item.cost * 100).toFixed(1)}%` : "N/A (zero cost)";
+        return `<tr>
+          <td>${item.name}</td>
+          <td>${money.format(item.revenue)}</td>
+          <td>${money.format(item.cost)}</td>
+          <td class="profit">${money.format(item.profit)}</td>
+          <td>${roi}</td>
+        </tr>`;
+      }).join("");
+      const retentionText = result.retentionBreakEven === null
+        ? "N/A (zero monthly margin × horizon)"
+        : `${(result.retentionBreakEven * 100).toFixed(2)}%`;
+      const streamingText = result.streamingBreakEven === null
+        ? "N/A (zero evaluation horizon)"
+        : `${money.format(result.streamingBreakEven)}/month`;
+      document.getElementById("break-even").innerHTML =
+        `<strong>Break-even references at current inputs:</strong> Retention probability = ${retentionText}; ` +
+        `Streaming additional monthly revenue = ${streamingText}.`;
+      const retention = getValues("retention");
+      const streaming = getValues("streaming");
+      updateStatusBadge(
+        "retention",
+        retention.r_ret,
+        result.retentionBreakEven,
+        result.retentionBreakEven === null ? null : retention.r_ret - result.retentionBreakEven,
+        value => `${(value * 100).toFixed(2)}%`,
+        value => `${value >= 0 ? "+" : ""}${(Math.abs(value) * 100).toFixed(2)} percentage points`,
+        "Cannot calculate p_min unless monthly margin × horizon is greater than zero."
+      );
+      updateStatusBadge(
+        "streaming",
+        streaming.delta_revenue,
+        result.streamingBreakEven,
+        result.streamingBreakEven === null ? null : streaming.delta_revenue - result.streamingBreakEven,
+        value => `${money.format(value)}/month`,
+        value => `${value >= 0 ? "+" : ""}${money.format(Math.abs(value))}/month`,
+        "Cannot calculate R_min unless the evaluation horizon is greater than zero."
+      );
+      renderChart(result);
+      updateCharts(result);
+      renderMcda(result);
+    }
+
+    scenarioSelect.addEventListener("change", event => loadPreset(event.target.value));
+    initializeCharts();
+    setupFields();
+    setupWeightControls();
+    loadPreset("Base Case");
+  </script>
+</body>
+</html>
